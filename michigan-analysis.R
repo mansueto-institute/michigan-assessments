@@ -5,6 +5,9 @@ library(readxl)
 # devtools::install_github("cmf-uchicago/cmfproperty")
 library(cmfproperty)
 
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+getwd()
+
 # FHFA HPI for Three-Digit ZIP Codes (All-Transactions Index)
 hpi_df<- list('year' = c(2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023),
               'hpi_3zip' = c(135.50, 131.40, 129.88, 135.09, 140.87, 151.13, 156.41, 167.34, 177.28, 187.02, 193.97, 217.88, 249.00, 268.22),
@@ -14,13 +17,13 @@ hpi_df<- list('year' = c(2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2
   as.data.frame()
 
 # https://dewittmi.gov/city-assessor/
-dewitt <- read_excel('/Users/nm/Desktop/michigan-analysis/DEWITT TOWNSHIP FOIA EXPORT.xlsx')
+dewitt <- read_excel('DEWITT TOWNSHIP FOIA EXPORT.xlsx')
 
 df <- dewitt %>%
   filter(Parcels.propstatus == 'Active',
          Parcels.exemptcode == 'TAXABLE',
          # ParcelMaster.propcity == 'DEWITT',
-         Parcels.propclass %in% c(401,410) ) %>%
+         Parcels.propclass %in% c(401) ) %>% # 410 is mobile homes
   mutate_at(vars(ParcelMaster.propzip), list(as.character)) %>%
   mutate(zip3 = str_sub(ParcelMaster.propzip, 1,3)) %>%
   mutate(sale_date = ymd(ParcelMaster.lastSaleDate)) %>%
@@ -84,6 +87,7 @@ ratios <-
 
 cmfproperty::make_report(ratios, 
                          jurisdiction_name = "Dewitt Charter Township, Michigan",
-                         output_dir = "/Users/nm/Desktop/michigan-analysis/reports/") 
+                         output_dir = paste0(getwd(), "/reports") )
+
 
 
