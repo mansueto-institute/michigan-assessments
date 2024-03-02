@@ -4,7 +4,7 @@
 * *Sales universe:* 
   * Transactions considered arm's length based on the following classes `"03-ARM'S LENGTH"`, `"19-MULTI PARCEL ARM'S LENGTH"`, `"03-ARMS LENGTH"`, `"11-FROM LENDING INSTITUTION EXPOSED"`, `"11-FROM LANDING INSTITUTION EXPOSED"`
   * For residential property classes where `PROPCLASSDESC` equals `"RESIDENTIAL-IMPROVED"` or `"RESIDENTIAL CONDOMINIUMS"` and `TAXSTATUS` is `'TAXABLE'`
-  * When the sale year equals 2023 and there are no duplicate transactions for a given property parcel
+  * Sales happening between 2023-04-01 to 2024-02-26.
   * For properties located in Detroit where `TAXPCITY` is `'DETROIT'`
   * For properties that sold for more than $1,000 and were assessed over $1,000
   * Excludes properties with an assessment value to sales ratio more than 1.5 times the interquartile range.
