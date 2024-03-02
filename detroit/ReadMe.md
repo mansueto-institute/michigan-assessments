@@ -9,4 +9,4 @@
   * For properties that sold for more than $1,000 and were assessed over $1,000
   * Excludes properties with an assessment value to sales ratio greater than 1.5 the interquartile range.
 * For a link to the report see this link: https://mansueto-institute.github.io/
-* The study consists of 3,140 properties sold between 4/1/23 to 3/31/24. 
+* The study consists of 2,104 properties sold between 2023-04-01 to 2024-02-26. 
