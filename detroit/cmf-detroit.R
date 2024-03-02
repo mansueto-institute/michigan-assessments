@@ -70,15 +70,20 @@ assessroll_full <- assessroll_full %>%
   filter(non_outlier_flag_iaao == 1)
 
 assessroll_full_input <- assessroll_full  %>%
+  filter(sale_date_coalesced >= as.Date('2023-04-01', format = "%Y-%m-%d")) %>%
   select(PARCELNO, sale_price_coalesced, ASSESSEDVALUE, sale_year) %>%
-  filter(sale_year == 2023)
+  mutate(assessment_year = 2024)
+  
+# mutate(sale_range = "2023-04-01 to 2024-02-26") %>%
 
 ratios <- cmfproperty::reformat_data(
   assessroll_full_input,
   sale_col = "sale_price_coalesced",
   assessment_col = "ASSESSEDVALUE",
-  sale_year_col = "sale_year",
+  sale_year_col = "assessment_year",
 )
+
+# 2023-04-01 to 2024-02-26
 
 cmfproperty::make_report(ratios, 
                          jurisdiction_name = "Detroit, Michigan",
