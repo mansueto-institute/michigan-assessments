@@ -70,7 +70,8 @@ assessroll_full <- assessroll_full %>%
   filter(non_outlier_flag_iaao == 1)
 
 assessroll_full_input <- assessroll_full  %>%
-  select(PARCELNO, sale_price_coalesced, ASSESSEDVALUE, sale_year)
+  select(PARCELNO, sale_price_coalesced, ASSESSEDVALUE, sale_year) %>%
+  filter(sale_year == 2023)
 
 ratios <- cmfproperty::reformat_data(
   assessroll_full_input,
