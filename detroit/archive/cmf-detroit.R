@@ -7,14 +7,35 @@ library(scales)
 library(patchwork)
 library(tidymodels)
 
-# https://data.detroitmi.gov/datasets/detroitmi::tentative-assessment-roll-2024/about
-#assessroll <- read_csv('/Users/nm/Desktop/michigan-assessments/detroit/data/Tentative_Assessment_Roll_(2024).csv')
-assessroll <- read_csv('/Users/nm/Desktop/Projects/work/cmf-reports/Tentative_Assessment_Roll_(2024).csv')
+# https://www.michigan.gov/treasury/-/media/Project/Websites/treasury/STC/Bulletins/2023/Bulletin-16-of-2023---Inflation-Rate-Multiplier-for-2024.pdf?rev=f423a9acbe454ee4b253a8b2d0a56b9b&hash=5026C95F56D2AD98991EB417B821C1A2
+inflation_adj <- list(year = c(2021, 2022, 2023, 2024),
+                      inflation_rate_multipliers = c(1.014, 1.033, 1.05, 1.05),
+                      index_2024 = c(1.1389, 1.1025, 1.0500, 1.0000)
+                      ) %>% as.data.frame()
 
-# Sales data: https://data.detroitmi.gov/datasets/property-sales-1/explore?showTable=true 
-sales <- read_csv('/Users/nm/Desktop/Projects/work/cmf-reports/detroit-lansing-data/detroit/Property_Sales.csv')
-names(assessroll)
-sales <- sales %>%
+# https://detroitmi.gov/document/2024-valuation-sales-used
+sales_training <- read_excel('/Users/nm/Desktop/Projects/work/cmf-reports/detroit-lansing-data/detroit/2024 Resi Arms Length transactions.xlsx') %>%
+  rename_all(list(tolower)) %>%
+  select_all(~gsub("\\s+|\\.|\\/", "_", .)) %>%
+  mutate(
+    sale_date_sr = as.Date(str_sub(sale_date, 1, 10), format = "%Y-%m-%d"),
+    sale_year_sr = as.integer(str_sub(sale_date, 1, 4))) %>%
+  #filter(sale_year_sr == 2023 | sale_year_sr == 2024) %>%
+  filter(sale_year_sr >= 2021 & sale_year_sr <= 2024) %>%
+  group_by(parcel_number) %>%
+  mutate(dup_count = row_number(desc(sale_date))) %>%
+  ungroup() %>%
+  filter(dup_count == 1) %>%
+  select(parcel_number, sale_year_sr, sale_date_sr, sale_price, terms_of_sale) %>%
+  left_join(., inflation_adj %>% select(year, index_2024), by = c('sale_year_sr'='year')) %>%
+  mutate(sale_price_2024 = sale_price * index_2024) %>%
+  rename(sale_date_training = sale_date_sr, 
+         sale_price_training = sale_price, 
+         sale_price_2024_training = sale_price_2024) %>%
+  select(parcel_number, sale_date_training, sale_price_training, sale_price_2024_training)
+
+# Recent sales data: https://data.detroitmi.gov/datasets/property-sales-1/explore?showTable=true 
+sales_validation <- read_csv('/Users/nm/Desktop/Projects/work/cmf-reports/detroit-lansing-data/detroit/Property_Sales.csv') %>%
   filter(term_of_sale %in% c("03-ARM'S LENGTH", "19-MULTI PARCEL ARM'S LENGTH", "03-ARMS LENGTH", "11-FROM LENDING INSTITUTION EXPOSED", "11-FROM LANDING INSTITUTION EXPOSED")) %>%
   mutate(
     sale_date_sr = as.Date(str_sub(sale_date, 1, 10), format = "%Y/%m/%d"),
@@ -24,15 +45,25 @@ sales <- sales %>%
   mutate(dup_count = row_number(desc(sale_date))) %>%
   ungroup() %>%
   filter(dup_count == 1) %>%
-  select(parcel_number, sale_year_sr, sale_date_sr, sale_price, term_of_sale) 
-  
+  select(parcel_number, sale_year_sr, sale_date_sr, sale_price, term_of_sale)  %>%
+  left_join(., inflation_adj %>% select(year, index_2024), by = c('sale_year_sr'='year')) %>%
+  mutate(sale_price_2024 = sale_price * index_2024)  %>%
+  rename(sale_date_validation = sale_date_sr, 
+         sale_price_validation = sale_price, 
+         sale_price_2024_validation = sale_price_2024) %>%
+  select(parcel_number, sale_date_validation, sale_price_validation, sale_price_2024_validation)
+
+
+# https://data.detroitmi.gov/datasets/detroitmi::tentative-assessment-roll-2024/about
+assessroll <- read_csv('/Users/nm/Desktop/Projects/work/cmf-reports/detroit-lansing-data/detroit/Tentative_Assessment_Roll_(2024).csv')
+
 assessroll_full <- assessroll %>%
   mutate(sale_year_ar = as.integer(str_sub(SALEDATE, 1,4)),
          sale_date_ar = as.Date(str_sub(SALEDATE, 1,10), format = "%Y/%m/%d")#,
   ) %>%
-  left_join(., sales %>% select(parcel_number, sale_year_sr, sale_date_sr, sale_price, term_of_sale), by = c('PARCELNO' = 'parcel_number')) %>%
-  select(PARCELNO, propclass, TAXPCITY, PROPCLASSDESC, TAXSTATUS, SALEPRICE, SALEDATE, ASSESSEDVALUE, TAXABLEVALUE, sale_year_ar, sale_date_ar, sale_year_sr, sale_date_sr, sale_price, term_of_sale) %>%
-  filter(sale_year_ar >= 2023 | sale_year_sr >= 2023) %>%
+  select(PARCELNO, propclass, TAXPCITY, PROPCLASSDESC, TAXSTATUS, SALEPRICE, SALEDATE, ASSESSEDVALUE, TAXABLEVALUE) %>%
+  left_join(., sales_validation, by = c('PARCELNO'='parcel_number')) %>%
+  left_join(., sales_training, by = c('PARCELNO'='parcel_number')) %>%
   mutate(sale_price_coalesced = coalesce(sale_price, SALEPRICE),
          sale_date_coalesced = coalesce(sale_date_sr, sale_date_ar)
          ) %>%
@@ -46,6 +77,8 @@ assessroll_full <- assessroll %>%
   #mutate(file_year = 2023) %>%
   filter(sale_price_coalesced >= 1000 & ASSESSEDVALUE >= 1000) %>%
   select(PARCELNO, propclass, TAXPCITY, PROPCLASSDESC, TAXSTATUS, sale_price_coalesced, sale_date_coalesced, ASSESSEDVALUE, TAXABLEVALUE)
+
+
 
 assessroll_full <- assessroll_full %>%
   mutate(sale_bucket = case_when(sale_price_coalesced <= 50000 ~ '1 - <$50K',
@@ -75,28 +108,34 @@ assessroll_full <- assessroll_full %>%
                                        TRUE ~ as.integer(0))) %>%
   filter(non_outlier_flag_iaao == 1)
 
+# use for technical study
 assessroll_full_input <- assessroll_full  %>%
   filter(sale_date_coalesced >= as.Date('2023-04-01', format = "%Y-%m-%d")) %>%
   select(PARCELNO, sale_price_coalesced, ASSESSEDVALUE, sale_year) %>%
   mutate(assessment_year = 2024)
-  
+
+# use for legal study
+assessroll_full_input <- assessroll_full  %>%
+  filter(sale_date_coalesced >= as.Date('2021-04-01', format = "%Y-%m-%d") & sale_date_coalesced <= as.Date('2023-03-31', format = "%Y-%m-%d")) %>%
+  select(PARCELNO, sale_price_coalesced, ASSESSEDVALUE, sale_year) %>%
+  mutate(assessment_year = 2024)
 # z <- assessroll_full  %>%
 #   filter(sale_date_coalesced >= as.Date('2023-04-01', format = "%Y-%m-%d"))
 
 # mutate(sale_range = "2023-04-01 to 2024-02-26") %>%
 
-ratios <- cmfproperty::reformat_data(
-  assessroll_full_input,
-  sale_col = "sale_price_coalesced",
-  assessment_col = "ASSESSEDVALUE",
-  sale_year_col = "assessment_year",
-)
-
-# 2023-04-01 to 2024-02-26
-
-cmfproperty::make_report(ratios, 
-                         jurisdiction_name = "Detroit, Michigan 0",
-                         output_dir = "/Users/nm/Desktop/Projects/work/cmf-reports/detroit-lansing-data") 
+# ratios <- cmfproperty::reformat_data(
+#   assessroll_full_input,
+#   sale_col = "sale_price_coalesced",
+#   assessment_col = "ASSESSEDVALUE",
+#   sale_year_col = "assessment_year",
+# )
+# 
+# # 2023-04-01 to 2024-02-26
+# 
+# cmfproperty::make_report(ratios, 
+#                          jurisdiction_name = "Detroit, Michigan 0",
+#                          output_dir = "/Users/nm/Desktop/Projects/work/cmf-reports/detroit-lansing-data") 
 
 
 # -------------------------------------------------------------------------
@@ -342,7 +381,7 @@ cod_df <-  assessroll_full_input %>%
 print(cod_df)
 # COD: 0.404 
 # 0.405  2892
-
+# legal 0.382 1518
 # -------------------------------------------------------------------------
 
 prd_df <- assessroll_full_input %>% 
@@ -358,12 +397,13 @@ prd_df <- assessroll_full_input %>%
 print(prd_df)
 # PRD: 1.12 
 # 1.15 
+# legal 1.14
 
 # -------------------------------------------------------------------------
 
 # https://github.com/cmf-uchicago/cmfproperty/blob/master/R/iaao_stats.R
 
-iaao_df <- calc_iaao_stats(ratios) 
+# iaao_df <- calc_iaao_stats(ratios) 
 
 av_test <- assessroll_full_input %>% 
   mutate(av_ratio = ASSESSEDVALUE/sale_price_coalesced,
@@ -381,6 +421,7 @@ av_test_prb_1 = stats::lm(((av_ratio - median(av_ratio))/median(av_ratio)) ~ I(l
 print(av_test_prb_1)
 # PRB -0.1071028
 # -0.1168403
+# legal -0.09771147
 
 lm_model <- linear_reg() %>% 
   fit(prb_pct_diff ~ prb_ln_value,  data = av_test) %>%
@@ -388,12 +429,16 @@ lm_model <- linear_reg() %>%
 print(lm_model)
 # PRB -0.107
 # -0.117
+# legal -0.0977
 
 av_test %>% select(prd, cod) %>% distinct() %>% print()
 # running manually
 # COD 40.4
 # PRD 1.12
 # PRB -0.1071028
+
+# legal prd 1.14 cod 38.2
+
 
 # PRD 1.15  COD 40.5
 
