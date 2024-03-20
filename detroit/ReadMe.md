@@ -1,11 +1,8 @@
 ### Sales Ratio Study for Detroit, Michigan
 
-* *Data source:* The following study uses 2023 sales available at this [link](https://data.detroitmi.gov/datasets/property-sales-1/explore?showTable=true) and the 2024 assessment roll available at this [link](https://data.detroitmi.gov/datasets/property-sales-1/explore?showTable=true).
-* *Sales universe:* 
-  * Transactions considered arm's length based on the following classes `"03-ARM'S LENGTH"`, `"19-MULTI PARCEL ARM'S LENGTH"`, `"03-ARMS LENGTH"`, `"11-FROM LENDING INSTITUTION EXPOSED"`, `"11-FROM LANDING INSTITUTION EXPOSED"`
-  * For residential property classes where `PROPCLASSDESC` equals `"RESIDENTIAL-IMPROVED"` or `"RESIDENTIAL CONDOMINIUMS"` and `TAXSTATUS` is `'TAXABLE'`
-  * Sales happening between 2023-04-01 to 2024-02-26.
-  * For properties that sold for more than $1,000 and were assessed over $1,000
-  * Excludes properties with an assessment value to sales ratio more than 1.5 times the interquartile range.
-* For a link to the report see this link: https://mansueto-institute.github.io/
-* The study consists of 2,892 properties sold between 2023-04-01 to 2024-02-26. 
+*Data sources:* The ratio study code utilizes three data files:
+* 2024 assessment roll available at [https://data.detroitmi.gov/datasets/property-sales-1/explore?showTable=tru](https://data.detroitmi.gov/datasets/property-sales-1/explore?showTable=true)
+* For the time period of April 1, 2021 to March 31, 2023 we used the "2024 valuation sales used file" available at [https://detroitmi.gov/document/2024-valuation-sales-used](https://detroitmi.gov/document/2024-valuation-sales-used)
+* For the time period of 2023-04-01 to 2024-03-14 we used the sales data in this file available at [https://data.detroitmi.gov/datasets/property-sales-1/explore?showTable=true](https://data.detroitmi.gov/datasets/property-sales-1/explore?showTable=true)
+
+* See [this link](https://docs.google.com/document/d/1dZsRyc-nTUHrled88pkG2M4TJVZ39vdRkZqqtqB1mMA/) for the study for Detroit. This includes all pertinent methodological info and findings.
